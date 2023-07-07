@@ -50,3 +50,9 @@ Import resources to state - terraform.tfstate
 Destroy resources
 
 `terraform apply -destroy -var-file=./backend_vars/backend-tfvars.tfvars`
+
+## Cloudformation
+
+In `cloudformation_templates` there's a simple Cloudformation temmplate for provisioning an S3 bucket.
+
+The template example is sourced from [here](https://www.varonis.com/blog/create-s3-bucket)
