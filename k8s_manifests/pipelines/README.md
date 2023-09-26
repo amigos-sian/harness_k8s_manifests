@@ -3,8 +3,7 @@
 Here's some examples of model pipelines for Harness. 
 
 ## Model Canary
-
-(Model Canary)[./model_canary.yml] provides a generic pipeline for deploying an app to a preprod environment, prior to a deployment to a production environment.
+[(Model Canary](./model_canary.yml) provides a generic pipeline for deploying an app to a preprod environment, prior to a deployment to a production environment.
 
 - When you execute the pipeline, you can select for:
 a)  a service e.g. `model_guestbook` and you can restrict the allowed values for this `<+input>.default(default).allowedValues(model_guestbook)`
@@ -21,7 +20,7 @@ Here are the stages:
 5. Deploy service under prod namespace to target prod infrastructure: `model_infra_prod`
 
 
-The template ref `create_k8s_namespace` refers to a bash script found [here](script_templates/create_namespace.sh). Currently, bash scripts can't be referenced from git in Harness. The script requires `NamespaceName` to be defined as a variable in pipeline stages 1 and 4. 
+The template ref `create_k8s_namespace` refers to a bash script found [here](../../script_templates/create_namespace.sh). Currently, bash scripts can't be referenced from git in Harness. The script requires `NamespaceName` to be defined as a variable in pipeline stages 1 and 4. 
 
 ### Notes on JEXL expressions. 
 
