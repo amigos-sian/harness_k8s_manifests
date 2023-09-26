@@ -1,4 +1,4 @@
-# k8s_manifests
+# harness_k8s_manifests
 
 Sample Kubernetes deployment and service manifests which can be referenced for services in harness. 
 
@@ -13,6 +13,10 @@ Syntax Feature:
 
 - In values.yml, notice Harness params can be passed e.g. for namespaces defined under namespace: `<+infra.namespace>`
 - Notice is deployment and service files, variables can be referenced like this eg. `{{.Values.namespace}}`.
+
+## Pipelines
+
+- Model pipelines are referenced for canaries, rolling and blue-green deployments. 
 
 ## Terraform
 

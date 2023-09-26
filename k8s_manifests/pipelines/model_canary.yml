@@ -1,0 +1,238 @@
+pipeline:
+  name: model_canary_pipeline
+  identifier: model_canary_pipeline
+  projectIdentifier: demo
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: create_pre_prod_namespace
+        identifier: create_namespace
+        description: ""
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: create_namespace
+                  identifier: create_namespace
+                  template:
+                    templateRef: create_k8s_namespace
+                    versionLabel: v1
+                    templateInputs:
+                      type: ShellScript
+                      when: <+input>
+        tags: {}
+        variables:
+          - name: NamespaceName
+            type: String
+            description: ""
+            required: false
+            value: preprod-<+pipeline.variables.service.replace('_', '-')>
+    - stage:
+        name: deploy_canary_preprod
+        identifier: deploy_canary_preprod
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: <+pipeline.variables.service>
+          environment:
+            environmentRef: model_preprod
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: model_infra_preprod
+                inputs:
+                  identifier: model_infra_preprod
+                  type: KubernetesDirect
+                  spec:
+                    namespace: preprod-<+pipeline.variables.service.replace('_', '-')>
+          execution:
+            steps:
+              - stepGroup:
+                  name: Canary Deployment
+                  identifier: canaryDepoyment
+                  steps:
+                    - step:
+                        name: Canary Deployment
+                        identifier: canaryDeployment
+                        type: K8sCanaryDeploy
+                        timeout: 10m
+                        spec:
+                          instanceSelection:
+                            type: Count
+                            spec:
+                              count: 1
+                          skipDryRun: false
+                    - step:
+                        name: Canary Delete
+                        identifier: canaryDelete
+                        type: K8sCanaryDelete
+                        timeout: 10m
+                        spec: {}
+              - stepGroup:
+                  name: Primary Deployment
+                  identifier: primaryDepoyment
+                  steps:
+                    - step:
+                        name: Rolling Deployment
+                        identifier: rollingDeployment
+                        type: K8sRollingDeploy
+                        timeout: 10m
+                        spec:
+                          skipDryRun: false
+            rollbackSteps:
+              - step:
+                  name: Canary Delete
+                  identifier: rollbackCanaryDelete
+                  type: K8sCanaryDelete
+                  timeout: 10m
+                  spec: {}
+              - step:
+                  name: Rolling Rollback
+                  identifier: rollingRollback
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec: {}
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+        when:
+          pipelineStatus: Success
+    - stage:
+        name: confirm_approval_for_prod
+        identifier: confirm_approval_for_prod
+        description: ""
+        type: Approval
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: approval_step
+                  identifier: approval_step
+                  type: HarnessApproval
+                  timeout: 1d
+                  spec:
+                    approvalMessage: |-
+                      Please review the following information
+                      and approve the pipeline progression
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      minimumCount: 1
+                      disallowPipelineExecutor: false
+                      userGroups:
+                        - pipeline_executors
+                    isAutoRejectEnabled: false
+                    approverInputs: []
+        tags: {}
+    - stage:
+        name: create_prod_namespace
+        identifier: create_prod_namespace
+        description: ""
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: create_k8s_namespace
+                  identifier: create_k8s_namespace
+                  template:
+                    templateRef: create_k8s_namespace
+                    versionLabel: v1
+                    templateInputs:
+                      type: ShellScript
+                      when: <+input>
+        tags: {}
+        variables:
+          - name: NamespaceName
+            type: String
+            description: ""
+            required: false
+            value: prod-<+pipeline.variables.service.replace('_', '-')>
+    - stage:
+        name: deploy_canary_prod
+        identifier: deploy_canary_prod
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            useFromStage:
+              stage: deploy_canary_preprod
+          environment:
+            environmentRef: model_prod
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: model_infra_prod
+                inputs:
+                  identifier: model_infra_prod
+                  type: KubernetesDirect
+                  spec:
+                    namespace: prod-<+pipeline.variables.service.replace('_', '-')>
+          execution:
+            steps:
+              - stepGroup:
+                  name: Canary Deployment
+                  identifier: canaryDepoyment
+                  steps:
+                    - step:
+                        name: Canary Deployment
+                        identifier: canaryDeployment
+                        type: K8sCanaryDeploy
+                        timeout: 10m
+                        spec:
+                          instanceSelection:
+                            type: Count
+                            spec:
+                              count: 1
+                          skipDryRun: false
+                    - step:
+                        name: Canary Delete
+                        identifier: canaryDelete
+                        type: K8sCanaryDelete
+                        timeout: 10m
+                        spec: {}
+              - stepGroup:
+                  name: Primary Deployment
+                  identifier: primaryDepoyment
+                  steps:
+                    - step:
+                        name: Rolling Deployment
+                        identifier: rollingDeployment
+                        type: K8sRollingDeploy
+                        timeout: 10m
+                        spec:
+                          skipDryRun: false
+            rollbackSteps:
+              - step:
+                  name: Canary Delete
+                  identifier: rollbackCanaryDelete
+                  type: K8sCanaryDelete
+                  timeout: 10m
+                  spec: {}
+              - step:
+                  name: Rolling Rollback
+                  identifier: rollingRollback
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec: {}
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+        when:
+          pipelineStatus: Success
+  variables:
+    - name: service
+      type: String
+      description: ""
+      required: false
+      value: <+input>.default(default).allowedValues(model_guestbook)
