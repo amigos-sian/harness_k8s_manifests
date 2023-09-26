@@ -3,7 +3,7 @@
 Here's some examples of model pipelines for Harness. 
 
 ## Model Canary
-[(Model Canary](./model_canary.yml) provides a generic pipeline for deploying an app to a preprod environment, prior to a deployment to a production environment.
+[Model Canary](./model_canary.yml) provides a generic pipeline for deploying an app to a preprod environment, prior to a deployment to a production environment.
 
 - When you execute the pipeline, you can select for:
 a)  a service e.g. `model_guestbook` and you can restrict the allowed values for this `<+input>.default(default).allowedValues(model_guestbook)`
