@@ -1,0 +1,100 @@
+pipeline:
+  name: model_rolling
+  identifier: model_rolling
+  projectIdentifier: demo
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: create_namespace
+        identifier: create_namespace
+        description: ""
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: create_namespace
+                  identifier: create_namespace
+                  template:
+                    templateRef: create_k8s_namespace
+                    versionLabel: v1
+                    templateInputs:
+                      type: ShellScript
+                      when: <+input>
+        tags: {}
+        variables:
+          - name: NamespaceName
+            type: String
+            description: ""
+            required: false
+            value: "preprod-<+pipeline.variables.service.replace('_', '-')>-rolling "
+        when:
+          pipelineStatus: Success
+    - stage:
+        name: rolling_deploy
+        identifier: rolling_deploy
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: <+pipeline.variables.service>
+          execution:
+            steps:
+              - step:
+                  name: Rollout Deployment
+                  identifier: rolloutDeployment
+                  type: K8sRollingDeploy
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+            rollbackSteps:
+              - step:
+                  name: Rollback Rollout Deployment
+                  identifier: rollbackRolloutDeployment
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec:
+                    pruningEnabled: false
+          environment:
+            environmentRef: model_preprod
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: model_infra_preprod
+                inputs:
+                  identifier: model_infra_preprod
+                  type: KubernetesDirect
+                  spec:
+                    namespace: preprod-<+pipeline.variables.service.replace('_', '-')>-rolling
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+    - stage:
+        name: test_outputs
+        identifier: test_outputs
+        description: ""
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: get_deployment_data
+                  identifier: get_deployment_data
+                  template:
+                    templateRef: get_deployment_meta_data
+                    versionLabel: v1
+        tags: {}
+        when:
+          pipelineStatus: Success
+  variables:
+    - name: service
+      type: String
+      description: ""
+      required: false
+      value: <+input>.default(default).allowedValues(model_nginx)

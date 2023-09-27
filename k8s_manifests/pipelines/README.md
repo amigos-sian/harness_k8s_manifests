@@ -2,6 +2,10 @@
 
 Here's some examples of model pipelines for Harness. 
 
+## Model Rolling
+
+[Model Rolling](./model_rolling.yml) provides a generic pipeline for deploying an app to a preprod environment. In a rolling deployment, pods are incrementally provisioned. 
+
 ## Model Canary
 
 [Model Canary](./model_canary.yml) provides a generic pipeline for deploying an app to a preprod environment, prior to a deployment to a production environment.
@@ -38,15 +42,13 @@ Here are the stages:
 
 With stage 2, harness will check to see if a "staged" version of the deployment exists e.g.`preprod-model-nginx-stage`, if it doesn't, it will duplicate the service e.g. `preprod-model-nginx` and add the suffix `-stage`. Deployed pods for the service will be considered as `blue`. e.g. `preprod-model-nginx-blue-bf6755648-bqspr`.
 
-If `preprod-model-nginx-stage` already exists, then pod set for the staged service will be assigned as `green` e.g. `preprod-model-nginx-green-5b49dcb6b9-gsjwn`, and the pods will co-exist alongsde the pods previously provisione under the primary service.
+If `preprod-model-nginx-stage` already exists, then pod set for the staged service will be assigned the label `harness.io/color: green`. The pod name may look like this e.g. `preprod-model-nginx-green-5b49dcb6b9-gsjwn`. You will also see blue pods listed under the same namespace, which at this stage, would be available to check via the primary service. 
 
 In stage 4, Harness points the primary service e.g. `preprod-model-nginx` to the staged pods and the app version will increment. If it's the first time deployment, the pod set will still be assigned the label `harness.io/color: blue`. 
 
-Harness will also point the staged service to the pod set originally provisoned under the primary service.
+Harness will also point the staged service to the pod set originally provisoned under the primary service, which has the label `harness.io/color: green`.
 
-Pod sets are assigned the label e.g. `harness.io/color: green/blue` during this.
-
-In stage 6, we utilize a new Harness feature to scale down the staged service - this is a cost saving measure. This should scale down the staged service, which should be blue. Note, the feature is in beta - the first time I tried this, the green service was scaled down (which was wrong). 
+In stage 6, we utilize a new Harness feature to scale down the staged service - this is a cost saving measure. This should scale down the staged service, with the label `harness.io/color: blue`. Note, the feature is in beta - the first time I tried this, the green service was scaled down, but this has worked since. 
 
 Tips
 
@@ -62,12 +64,11 @@ Also, check after scale down that the pods with the greatest age are terminated.
 
 Note ports of interest for your service e.g. `80:30569/TCP`
 
-2. `kubectl --namespace preprod-model-guestbook port-forward service/preprod-model-guestbook 30569:80`
+2. `kubectl --namespace preprod-model-nginx port-forward service/preprod-model-nginx 30569:80`
 
 Set up port forward for the service from the cluster to your local machine
 
 3. Access endpoint: http://localhost:30569/
-
 
 ## Notes on JEXL expressions. 
 
